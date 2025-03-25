@@ -1,0 +1,17 @@
+{
+  "name": "octo-stream",
+  "version": "1.0.0",
+  "description": "Backend of Octo-Stream",
+  "keywords": [
+    "backend",
+    "chai",
+    "Octo-Stream"
+  ],
+  "license": "ISC",
+  "author": "Gurusharan Sahu",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  }
+}
