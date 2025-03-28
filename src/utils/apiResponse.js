@@ -7,3 +7,5 @@ class ApiResponse {
         // Here statusCode < 400 as all > 400 statusCode should be handled by apiError
     }
 }
+
+export { ApiResponse }

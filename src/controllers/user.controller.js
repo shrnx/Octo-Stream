@@ -2,6 +2,8 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 import { ApiError } from "../utils/apiError.js"
 import { z } from "zod"
 import { User } from "../models/user.models.js"
+import { uploadOnCloudinary } from "../utils/cloudinary.js"
+import { ApiResponse } from "../utils/apiResponse.js"
 
 export const registerUser = asyncHandler( async(req, res) => {
     // Get user data from frontend
@@ -41,7 +43,44 @@ export const registerUser = asyncHandler( async(req, res) => {
         throw new ApiError(409, "User with email or username exists");
     };
 
-    
+    // From multer middleware
+    const avatarLocalPath = req.files?.avatar[0]?.path;      // Check this through console.log
+    const coverImageLocalPath = req.files?.coverImage[0]?.path;
+
+    if(!avatarLocalPath) {
+        throw new ApiError(400, "Avatar is needed");
+    };
+
+    // Upload them to cloudinary
+    const avatar = await uploadOnCloudinary(avatarLocalPath)
+    const coverImage = await uploadOnCloudinary(coverImageLocalPath)
+
+    if(!avatar) {
+        throw new ApiError(400, "Avatar is needed");
+    }
+
+    // Upload to MongoDB
+    const user = await User.create({
+        fullName,
+        avatar: avatar.url,
+        coverImage: coverImage?.url || "",      // This is a corner case, which max people tends to miss
+        email,
+        password,
+        username
+    })
+
+    const createdUser = await User.find(user._id).select(
+        // By default everything is selected, so remove unnecessary
+        "-password -refreshToken"
+    )
+
+    if(!createdUser) {
+        throw new ApiError(500,  "Something went wrong while registering the user")
+    }
+
+    return res.status(201).json(
+        new ApiResponse(200, createdUser, "User registered successfully")
+    );
 
 })
 

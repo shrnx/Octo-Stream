@@ -28,3 +28,5 @@ const uploadOnCloudinary = async (localFilePath) => {
 }
 
 export { uploadOnCloudinary }
+
+// Currently this code deletes files on failed upload to cloudinary operation, but does not deletes when successfull -> we will later come to why.
