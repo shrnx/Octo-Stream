@@ -23,4 +23,12 @@ app.use(express.static("public"))   // This will store temp files like photos et
 
 app.use(cookieParser())  // This is used to access and remove cookies
 
+
+// Routes import
+import userRouter from "./routes/user.routes.js"
+
+
+// Routes declaration
+app.use("/api/v1/users", userRouter)
+
 export { app }
