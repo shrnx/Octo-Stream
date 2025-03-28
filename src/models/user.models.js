@@ -51,7 +51,7 @@ userSchema.pre("save", async function (next) {   // If we have use arrow functio
     };
     // This will check if password is not modified, don't run this logic
 
-    this.password = bcrypt.hash(this.password, 10);
+    this.password = await bcrypt.hash(this.password, 10);
     next()
 })
 
