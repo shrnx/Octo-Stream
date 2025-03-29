@@ -66,7 +66,7 @@ export const registerUser = asyncHandler(async (req, res) => {
 
     // Everything here checked, no issues, working fine till now.
 
-    // From multer middleware                       // Still Error here
+    // From multer middleware                                // Got Error here: Cannot read properties of undefined when files not
     const avatarLocalPath = req.files?.avatar[0]?.path;      // Check this through console.log
     const coverImageLocalPath = req.files?.coverImage[0]?.path;
 
