@@ -66,7 +66,7 @@ export const registerUser = asyncHandler(async (req, res) => {
 
     // Everything here checked, no issues, working fine till now.
 
-    // From multer middleware                                // Got Error here: Cannot read properties of undefined when files not
+    // From multer middleware                                // Got Error here: Cannot read properties of undefined when files not uploaded
     const avatarLocalPath = req.files?.avatar[0]?.path;      // Check this through console.log
     const coverImageLocalPath = req.files?.coverImage[0]?.path;
 
@@ -105,7 +105,7 @@ export const registerUser = asyncHandler(async (req, res) => {
     }
 
     return res.status(201).json(
-        new ApiResponse(200, createdUser, "User registered successfully")
+        new ApiResponse(201, createdUser, "User registered successfully")
     );
 
 })
