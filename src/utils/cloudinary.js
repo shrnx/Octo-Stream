@@ -17,7 +17,11 @@ const uploadOnCloudinary = async (localFilePath) => {
         const response = await cloudinary.uploader.upload(localFilePath, {
             resource_type: "auto"   // auto detect file
         })
-        console.log("File has been uploaded successfully on cloudinary", response.url);
+        // console.log("File has been uploaded successfully on cloudinary", response.url);  No need to show this now as we have checked, all fine
+
+        // Now I have check everything in cloudinary is working fine, and files are being uploaded correctly
+        // So we can just unlink(delete from the system) the files now
+        fs.unlinkSync(localFilePath)
 
         return response     // response gives every information about the uploaded file.
     } catch(error) {
@@ -25,6 +29,7 @@ const uploadOnCloudinary = async (localFilePath) => {
         console.error("Error: " + error);
         return null
     }
+    // Sync makes sure file is removed now, unlike async in which file gets removed in background
 }
 
 export { uploadOnCloudinary }
