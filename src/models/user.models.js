@@ -32,10 +32,13 @@ const userSchema = new mongoose.Schema({
     coverImage: {           // cloudinary URL
         type: String
     },
-    watchHistory: {         // This is array which holds multiple watched video links
-        type: Schema.Types.ObjectId,
-        ref: "Video"
-    },
+    watchHistory: [         // This is array which holds multiple watched video links.
+        // Earlier I forgot to put this inside array, so an array(even empty) didn't returned.
+        {         
+            type: Schema.Types.ObjectId,
+            ref: "Video"
+        }
+    ],
     password: {
         type: String,
         required: [true, "Password is required"]
