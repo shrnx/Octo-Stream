@@ -47,12 +47,17 @@ export const registerUser = asyncHandler(async (req, res) => {
 
 
     // Checking if the user exists? And also check that if user does not exist by email, is the username same as someone else or vice versa.
-    const userExists = User.findOne({
-        $or: [{ username }, { email }]      // checks all the values present in the object
-    })
+    // const userExists = User.findOne({
+    //     $or: [{ username }, { email }]      // checks all the values present in the object
+    // })
+    const usernameExists = await User.findOne({username});
+    if (usernameExists) {
+        throw new ApiError(409, "User with username exists");
+    };
 
-    if (userExists) {
-        throw new ApiError(409, "User with email or username exists");
+    const emailExists = await User.findOne({email});
+    if (emailExists) {
+        throw new ApiError(409, "User with email exists");
     };
 
     // From multer middleware
