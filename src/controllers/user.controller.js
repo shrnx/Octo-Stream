@@ -66,14 +66,24 @@ export const registerUser = asyncHandler(async (req, res) => {
 
     // Everything here checked, no issues, working fine till now.
 
+    
     // From multer middleware                                // Got Error here: Cannot read properties of undefined when files not uploaded
-    const avatarLocalPath = req.files?.avatar[0]?.path;      // Check this through console.log
-    const coverImageLocalPath = req.files?.coverImage[0]?.path;
+    
+    // const avatarLocalPath = req.files?.avatar[0]?.path;      // Check this through console.log
+    // const coverImageLocalPath = req.files?.coverImage[0]?.path;
 
-    console.log(avatarLocalPath);
-    console.log(coverImageLocalPath);
+    let avatarLocalPath;
+    if(req.files && Array.isArray(req.files.avatar) && req.files.avatar.length > 0) {
+        avatarLocalPath = req.files.avatar[0].path
+    }
 
-    if (!avatarLocalPath) {
+    let coverImageLocalPath;
+    if(req.files && Array.isArray(req.files.coverImage) && req.files.coverImage.length > 0) {
+        coverImageLocalPath = req.files.coverImage[0].path;
+    }
+
+
+    if (!avatarLocalPath) {     // This makes sure avatar is needed
         throw new ApiError(400, "Avatar is needed");
     };
 
