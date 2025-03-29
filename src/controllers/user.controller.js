@@ -32,9 +32,9 @@ export const registerUser = asyncHandler(async (req, res) => {
 
     // So the best way is using ZOD Validations
     const requiredBody = z.object({
-        email: z.string().min(5).max(100).email(),
+        email: z.string().min(5).max(100).email().trim().toLowerCase(),
         fullName: z.string().min(5).max(100),
-        username: z.string().min(3).max(20),
+        username: z.string().min(3).max(20).toLowerCase(),
         password: z.string().min(6).max(100)
     })
 
@@ -44,25 +44,34 @@ export const registerUser = asyncHandler(async (req, res) => {
         throw new ApiError(400, `Error: ${parsedDataWithSuccess.error}`)
     }
 
+    const parsedEmail = parsedDataWithSuccess.data.email;
+    const parsedFullName = parsedDataWithSuccess.data.fullName;
+    const parsedUsername = parsedDataWithSuccess.data.username;
+    const parsedPassword = parsedDataWithSuccess.data.password;
 
 
     // Checking if the user exists? And also check that if user does not exist by email, is the username same as someone else or vice versa.
     // const userExists = User.findOne({
     //     $or: [{ username }, { email }]      // checks all the values present in the object
     // })
-    const usernameExists = await User.findOne({username});
+    const usernameExists = await User.findOne({username: parsedUsername});
     if (usernameExists) {
         throw new ApiError(409, "User with username exists");
     };
 
-    const emailExists = await User.findOne({email});
+    const emailExists = await User.findOne({email: parsedEmail});
     if (emailExists) {
         throw new ApiError(409, "User with email exists");
     };
 
-    // From multer middleware
+    // Everything here checked, no issues, working fine till now.
+
+    // From multer middleware                       // Still Error here
     const avatarLocalPath = req.files?.avatar[0]?.path;      // Check this through console.log
     const coverImageLocalPath = req.files?.coverImage[0]?.path;
+
+    console.log(avatarLocalPath);
+    console.log(coverImageLocalPath);
 
     if (!avatarLocalPath) {
         throw new ApiError(400, "Avatar is needed");
@@ -80,10 +89,10 @@ export const registerUser = asyncHandler(async (req, res) => {
     const user = await User.create({
         avatar: avatar.url,
         coverImage: coverImage?.url || "",      // This is a corner case, which max people tends to miss
-        fullName: parsedDataWithSuccess.fullName,
-        email: parsedDataWithSuccess.email,
-        password: parsedDataWithSuccess.password,
-        username: parsedDataWithSuccess.username
+        fullName: parsedFullName,
+        email: parsedEmail,
+        password: parsedPassword,
+        username: parsedUsername
     })
 
     const createdUser = await User.find(user._id).select(   
