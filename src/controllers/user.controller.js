@@ -5,7 +5,7 @@ import { User } from "../models/user.models.js"
 import { uploadOnCloudinary } from "../utils/cloudinary.js"
 import { ApiResponse } from "../utils/apiResponse.js"
 
-export const registerUser = asyncHandler( async(req, res) => {
+export const registerUser = asyncHandler(async (req, res) => {
     // Get user data from frontend
     // Validation - Not empty etc.
     // Check if user already exists: from username and email
@@ -15,7 +15,7 @@ export const registerUser = asyncHandler( async(req, res) => {
     // remove password and refresh token field from response
     // check for user creation -> return response
 
-    const { username, fullName, email, password } =  req.body;
+    const { username, fullName, email, password } = req.body;
 
     // if(fullName === "") {                                                    We can write multiple if/elses if we want
     //     throw new ApiError(400,  "fullName is required")
@@ -29,8 +29,20 @@ export const registerUser = asyncHandler( async(req, res) => {
     //     throw new ApiError(400, "All fields are required")
     // }
 
-    // So the best way is using ZOD Validations
 
+    // So the best way is using ZOD Validations
+    const requiredBody = z.object({
+        email: z.string().min(5).max(100).email(),
+        fullName: z.string().min(5).max(100),
+        username: z.string().min(3).max(20),
+        password: z.string().min(6).max(100)
+    })
+
+    const parsedDataWithSuccess = requiredBody.safeParse(req.body);
+
+    if(!parsedDataWithSuccess.success) {
+        throw new ApiError(400, `Error: ${parsedDataWithSuccess.error}`)
+    }
 
 
 
@@ -39,7 +51,7 @@ export const registerUser = asyncHandler( async(req, res) => {
         $or: [{ username }, { email }]      // checks all the values present in the object
     })
 
-    if(userExists) {
+    if (userExists) {
         throw new ApiError(409, "User with email or username exists");
     };
 
@@ -47,7 +59,7 @@ export const registerUser = asyncHandler( async(req, res) => {
     const avatarLocalPath = req.files?.avatar[0]?.path;      // Check this through console.log
     const coverImageLocalPath = req.files?.coverImage[0]?.path;
 
-    if(!avatarLocalPath) {
+    if (!avatarLocalPath) {
         throw new ApiError(400, "Avatar is needed");
     };
 
@@ -55,27 +67,27 @@ export const registerUser = asyncHandler( async(req, res) => {
     const avatar = await uploadOnCloudinary(avatarLocalPath)
     const coverImage = await uploadOnCloudinary(coverImageLocalPath)
 
-    if(!avatar) {
+    if (!avatar) {
         throw new ApiError(400, "Avatar is needed");
     }
 
     // Upload to MongoDB
     const user = await User.create({
-        fullName,
         avatar: avatar.url,
         coverImage: coverImage?.url || "",      // This is a corner case, which max people tends to miss
-        email,
-        password,
-        username
+        fullName: parsedDataWithSuccess.fullName,
+        email: parsedDataWithSuccess.email,
+        password: parsedDataWithSuccess.password,
+        username: parsedDataWithSuccess.username
     })
 
-    const createdUser = await User.find(user._id).select(
-        // By default everything is selected, so remove unnecessary
+    const createdUser = await User.find(user._id).select(   
+        // By default everything is selected, so remove unnecessary as we will sending data back to user
         "-password -refreshToken"
     )
 
-    if(!createdUser) {
-        throw new ApiError(500,  "Something went wrong while registering the user")
+    if (!createdUser) {
+        throw new ApiError(500, "Something went wrong while registering the user")
     }
 
     return res.status(201).json(
@@ -84,7 +96,7 @@ export const registerUser = asyncHandler( async(req, res) => {
 
 })
 
-export const loginUser = asyncHandler( async(req, res) => {
+export const loginUser = asyncHandler(async (req, res) => {
     res.status(200).json({
         message: "chai aur code"
     })
