@@ -5,6 +5,24 @@ import { User } from "../models/user.models.js"
 import { uploadOnCloudinary } from "../utils/cloudinary.js"
 import { ApiResponse } from "../utils/apiResponse.js"
 
+const generateAccessAndRefreshTokens = async(userId) => {
+    try {
+        const user = await User.findById(userId)
+        const accessToken = user.generateAccessToken()
+        const refreshToken = user.generateRefreshToken()
+
+        user.refreshToken = refreshToken;
+        await user.save({validateBeforeSave: false})     // From mongo, so whenever we use mongo methods all the fields are kicked in, like then we also have to put password etc.
+        // So we use {validateBeforeSave: false}, it's like we dont want any validations, we know what we are doing.
+
+        return {accessToken, refreshToken}
+
+
+    } catch(error) {
+        throw new ApiError(500, "Something went wrong while generating access and refresh tokens")
+    }
+} 
+
 export const registerUser = asyncHandler(async (req, res) => {
     // Get user data from frontend
     // Validation - Not empty etc.
@@ -121,7 +139,80 @@ export const registerUser = asyncHandler(async (req, res) => {
 })
 
 export const loginUser = asyncHandler(async (req, res) => {
-    res.status(200).json({
-        message: "chai aur code"
+    // req body -> data
+    // validate for correct data
+    // check from mongo user exists
+    // if user exists, check password
+    // generate an access & refresh token and store in browser
+    // login the user(send the cookie)
+
+    const{username, password, email} = req.body;
+
+    if(!username || !email) {
+        throw new ApiError(400, "username or password is required")
+    }
+
+    const user = await User.findOne({
+        $or: [{username}, {email}]  // Mongo Operators
     })
+
+    if(!user) {
+        throw new ApiError(404, "User does not exist")
+    }
+
+    const isPasswordValid = await user.isPasswordCorrect(password);
+
+    if(!isPasswordValid) {
+        throw new ApiError(401, "Incorrect user credentials")
+    }
+
+    const {accessToken,refreshToken} = await generateAccessAndRefreshTokens(user._id);
+
+    // Now here we have to decide do we want this high cost db call as we could have directly modified the object also.
+    const loggedInUser = await User.findById(user._id).select("-password -refreshToken")
+
+    const options = {   // Doing this makes cookies modified by server only not frontend.
+        httpOnly: true,
+        secure: true
+    }
+
+    return res.status(200)
+    .cookie("accessToken", accessToken, options)
+    .cookie("refreshToken", refreshToken, options)
+    .json(
+        new ApiResponse(200, {
+            user: loggedInUser, accessToken, refreshToken
+        }), 
+        "User Logged In Successfully"
+    )
+    // If we have already set tokens in cookies, why we are doing it again, maybe if the user needs this for localStorage, or if user is a mobile developer as there cookies will not be set automatically.
+})
+
+    
+// Logout User
+export const logoutUser = asyncHandler(async(req, res) => {
+    await User.findByIdAndUpdate(
+        req.user._id,   // We directly got req.user because of the secured auth middleware.
+        {
+            $set: {
+                refreshToken: undefined
+            }
+        },
+        {
+            new: true
+        }
+    )
+
+    const options = {   // Doing this makes cookies modified by server only not frontend.
+        httpOnly: true,
+        secure: true
+    }
+
+    return res
+    .status(200)
+    .clearCookies("accessToken", options)
+    .clearCookies("refreshToken", options)
+    .json(
+        new ApiResponse(200, {}, "User Logged Out")
+    )                   // I will not give any data
 })
