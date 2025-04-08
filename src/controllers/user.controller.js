@@ -4,6 +4,7 @@ import { z } from "zod"
 import { User } from "../models/user.models.js"
 import { uploadOnCloudinary } from "../utils/cloudinary.js"
 import { ApiResponse } from "../utils/apiResponse.js"
+import jwt from 'jsonwebtoken'
 
 const generateAccessAndRefreshTokens = async(userId) => {
     try {
@@ -218,4 +219,54 @@ export const logoutUser = asyncHandler(async(req, res) => {
     .json(
         new ApiResponse(200, {}, "User Logged Out")
     )                   // I will not give any data
+})
+
+// Refresh Access Token
+export const refreshAccessToken = asyncHandler(async(req, res) => {
+    try {
+        const incomingRefreshToken = req.cookoes.refreshToken || req.body.refreshToken      // If there is mobile dev who will give by body
+    
+        if(!incomingRefreshToken) {
+            throw new ApiError(401, "Unauthorized Request")
+        }
+    
+        const decodedToken = jwt.verify(incomingRefreshToken, process.env.REFRESH_TOKEN_SECRET)
+    
+        const user = await User.findById(decodedToken._id);
+    
+        if(!user) {
+            throw new ApiError(401, "Invalid Refresh Token")
+        }
+    
+        // If we are here, that means we have valid token\
+    
+        if(incomingRefreshToken !== user?.refreshToken) {
+            throw new ApiError(401, "Refresh Token is expired or used")
+        }
+    
+        const options = {
+            httpOnly: true,
+            secure: true
+        }
+    
+        const {accessToken, newRefreshToken} = await generateAccessAndRefreshTokens(user._id)
+    
+        return res
+        .status(200)
+        .cookie("accessToken", accessToken)
+        .cookie("refreshToken", newRefreshToken)
+        .json(
+            new ApiResponse(
+                200,
+                {
+                    accessToken, 
+                    refreshToken: newRefreshToken
+                },
+                "Access Tokens Renewed"
+            )
+        )
+    } catch (error) {
+        throw new ApiError(401, error?.message || "Invalid Refresh Token")
+    }
+
 })
