@@ -180,10 +180,13 @@ export const loginUser = asyncHandler(async (req, res) => {
     .cookie("accessToken", accessToken, options)
     .cookie("refreshToken", refreshToken, options)
     .json(
-        new ApiResponse(200, {
+        new ApiResponse(
+            200, 
+            {
             user: loggedInUser, accessToken, refreshToken
-        }), 
-        "User Logged In Successfully"
+            },
+            "User Logged In Successfully"
+        ), 
     )
     // If we have already set tokens in cookies, why we are doing it again, maybe if the user needs this for localStorage, or if user is a mobile developer as there cookies will not be set automatically.
 })
