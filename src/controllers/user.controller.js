@@ -311,3 +311,12 @@ export const changeCurrentPassword = asyncHandler(async(req, res) => {
     )
 })
 
+export const getCurrentUser = asyncHandler(async(req, res) => {
+    // We can use auth middleware to directly return user info
+
+    // We don't need user validation here as if user is authenticated then that means user is present in DB
+
+    return res
+    .status(200)
+    .json(200, req.user, "Current User fetched successfully")
+})
