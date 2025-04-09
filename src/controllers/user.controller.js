@@ -5,6 +5,7 @@ import { User } from "../models/user.models.js"
 import { uploadOnCloudinary } from "../utils/cloudinary.js"
 import { ApiResponse } from "../utils/apiResponse.js"
 import jwt from 'jsonwebtoken'
+import { error } from 'console';
 
 const generateAccessAndRefreshTokens = async(userId) => {
     try {
@@ -271,3 +272,42 @@ export const refreshAccessToken = asyncHandler(async(req, res) => {
     }
 
 })
+
+
+export const changeCurrentPassword = asyncHandler(async(req, res) => {
+    const {oldPassword, newPassword, confirmPassword} = req.body;
+
+    if(newPassword !== confirmPassword) {
+        throw new ApiError(400, "newPassword and confirmPassword are not same")
+    }
+
+    // Since there will be a auth middleware in this route to confirm user is authenticated before changing password, we can directly get user info by user._id
+
+    const user = await User.findById(req.user?._id)
+
+    // Now we have found user and need to check is oldPassword correct(same as stored in DB), we can use isPasswordCorrect method made in user Model.
+
+    const isPasswordCorrect =  await user.isPasswordCorrect(oldPassword)
+
+    if(!isPasswordCorrect) {
+        throw new ApiError(400, "Invalid oldPassword")
+    }
+
+    // Now we can store newPassword in DB as all checks are verified.
+    user.password = newPassword         // We have set newPassword in object
+    // Now we have to save it
+    await user.save({
+        validateBeforeSave: false   // We don't want to run any other validations
+    })
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(
+            200,
+            {},         // We don't want to send any data here
+            "Password changed successfully"
+        )
+    )
+})
+
