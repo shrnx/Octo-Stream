@@ -371,7 +371,10 @@ export const updateUserAvatar = asyncHandler(async(req, res) => {
     // In this route we will use auth as well as multer middleware
     
     // Here we are using file not files as earlier we were taking both avatar and coverImag, but here we are taking avatar only(single file)
-    const avatarLocalPath = req.file?.path
+    let avatarLocalPath;
+    if(req.files && Array.isArray(req.files.avatar) && req.files.avatar.length > 0) {   // Got error because doing .length[0] here, bro wahi to check karna tha
+        avatarLocalPath = req.files.avatar[0].path
+    }
 
     // Also we have to delete old Avatar so let's save it's name somewhere
     const oldAvatar = req.user?.avatar
@@ -399,6 +402,7 @@ export const updateUserAvatar = asyncHandler(async(req, res) => {
     ).select("-password")
 
     // Now everything's updated, so we can delete old avatar Image from cloudinary
+
     deleteOldAvatarFromCloudinary(oldAvatar);
 
     return res

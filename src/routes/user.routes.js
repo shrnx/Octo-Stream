@@ -4,6 +4,7 @@ const router = Router()
 import { upload } from "../middlewares/multer.middleware.js"
 import { verifyJWT } from "../middlewares/auth.middleware.js"
 import { refreshAccessToken } from "../controllers/user.controller.js"
+import { updateUserAvatar } from "../controllers/user.controller.js"
 
 router.route("/register").post(
     upload.fields([         // Multer Middleware, so that we can send images
@@ -27,5 +28,14 @@ router.route("/logout").post(verifyJWT, logoutUser)
 
 router.route("/refresh-token").post(refreshAccessToken)
 // We have not used verifyJWT as all that is done in controller only.
+
+router.route("/updateAvatar").patch(
+    verifyJWT,
+    upload.fields([{
+        name: "avatar",
+        maxCount: 1
+    }]), 
+    updateUserAvatar
+)
 
 export default router
