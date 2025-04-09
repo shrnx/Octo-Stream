@@ -26,5 +26,6 @@ router.route("/logout").post(verifyJWT, logoutUser)
 // this makes sure logout is correctly used.
 
 router.route("/refresh-token").post(refreshAccessToken)
+// We have not used verifyJWT as all that is done in controller only.
 
 export default router

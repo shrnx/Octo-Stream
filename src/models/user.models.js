@@ -64,7 +64,7 @@ userSchema.methods.isPasswordCorrect = async function (password) {
 
 userSchema.methods.generateAccessToken = function () {
     return jwt.sign({
-        _id: this._id,   // from mongoDB
+        _id: this._id,   // generated from mongoDB itself
         email: this.email,
         username: this.username,
         fullName: this.fullName

@@ -15,6 +15,7 @@ const generateAccessAndRefreshTokens = async(userId) => {
         user.refreshToken = refreshToken;
         await user.save({validateBeforeSave: false})     // From mongo, so whenever we use mongo methods all the fields are kicked in, like then we also have to put password etc.
         // So we use {validateBeforeSave: false}, it's like we dont want any validations, we know what we are doing.
+        // And since we are not doing anything related to password we can simply put validateBeforeSave as false.
 
         return {accessToken, refreshToken}
 
