@@ -5,6 +5,7 @@ import { User } from "../models/user.model.js"
 import { uploadOnCloudinary } from "../utils/cloudinary.js"
 import { ApiResponse } from "../utils/apiResponse.js"
 import jwt from 'jsonwebtoken'
+import { deleteOldAvatarFromCloudinary } from "../utils/deleteOldAvatarFromCloudinary.js"
 
 const generateAccessAndRefreshTokens = async(userId) => {
     try {
@@ -190,6 +191,14 @@ export const loginUser = asyncHandler(async (req, res) => {
         secure: true
     }
 
+    // const avatar = user.avatar  // This is avatar URL
+    // const avatarURLsplitted = avatar.split("/")
+    // const avatarIdforCloudinary = avatarURLsplitted[avatarURLsplitted.length-1]
+    // const removedPngfromavatarId = avatarIdforCloudinary.split(".")
+    // const finalAvatarId = removedPngfromavatarId[0]
+
+    // Did some heavy console.log here to make delete function for cloudinary image
+
     return res.status(200)
     .cookie("accessToken", accessToken, options)
     .cookie("refreshToken", refreshToken, options)
@@ -364,6 +373,9 @@ export const updateUserAvatar = asyncHandler(async(req, res) => {
     // Here we are using file not files as earlier we were taking both avatar and coverImag, but here we are taking avatar only(single file)
     const avatarLocalPath = req.file?.path
 
+    // Also we have to delete old Avatar so let's save it's name somewhere
+    const oldAvatar = req.user?.avatar
+
     if(!avatarLocalPath) {
         throw new ApiError(400, "Avatar file is missing")
     }
@@ -380,9 +392,14 @@ export const updateUserAvatar = asyncHandler(async(req, res) => {
             $set: {
                 avatar: avatar.url      // Cautious here, we don't want to store whole avatar object here.
             }
+        // When we are dealing with cloudinary, it returns avatar as an object that's why we use .url to get the url directly
+        // Whereas in oldAvatar, mongo is directly returning avatar url, so no need for extra .url
         },
         {new: true}        
     ).select("-password")
+
+    // Now everything's updated, so we can delete old avatar Image from cloudinary
+    deleteOldAvatarFromCloudinary(oldAvatar);
 
     return res
     .status(200)
