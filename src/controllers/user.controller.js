@@ -1,11 +1,10 @@
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { ApiError } from "../utils/apiError.js"
 import { z } from "zod"
-import { User } from "../models/user.models.js"
+import { User } from "../models/user.model.js"
 import { uploadOnCloudinary } from "../utils/cloudinary.js"
 import { ApiResponse } from "../utils/apiResponse.js"
 import jwt from 'jsonwebtoken'
-import { error } from 'console';
 
 const generateAccessAndRefreshTokens = async(userId) => {
     try {
@@ -151,19 +150,31 @@ export const loginUser = asyncHandler(async (req, res) => {
 
     const{username, password, email} = req.body;
 
-    if(!(username || email)) {
-        throw new ApiError(400, "username or email is required")
+    const requiredBody = z.object({
+        email: z.string().min(5).max(100).email().trim().toLowerCase(),
+        username: z.string().min(3).max(20).toLowerCase(),
+        password: z.string().min(6).max(100)
+    })
+
+    const parsedDataWithSuccess = requiredBody.safeParse(req.body);
+
+    if(!parsedDataWithSuccess.success) {
+        throw new ApiError(400, `Error: ${parsedDataWithSuccess.error}`)
     }
 
+    const parsedEmail = parsedDataWithSuccess.data.email;
+    const parsedUsername = parsedDataWithSuccess.data.username;
+    const parsedPassword = parsedDataWithSuccess.data.password;
+
     const user = await User.findOne({
-        $or: [{username}, {email}]  // Mongo Operators
+        $or: [{username: parsedUsername}, {email: parsedEmail}]  // Mongo Operators
     })
 
     if(!user) {
         throw new ApiError(404, "User does not exist")
     }
 
-    const isPasswordValid = await user.isPasswordCorrect(password);
+    const isPasswordValid = await user.isPasswordCorrect(parsedPassword);
 
     if(!isPasswordValid) {
         throw new ApiError(401, "Incorrect user credentials")
