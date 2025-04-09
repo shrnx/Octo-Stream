@@ -320,3 +320,29 @@ export const getCurrentUser = asyncHandler(async(req, res) => {
     .status(200)
     .json(200, req.user, "Current User fetched successfully")
 })
+
+
+export const updateAccountDetails = asyncHandler(async(req, res) => {
+    const { fullName, email} = req.body       // If we want to update files make another controller and routes for it, it's better practise
+
+    if(!fullName || !email) {
+        throw new ApiError(400, "All fields are required")
+    }
+
+    const user = await User.findByIdAndUpdate(
+        req.user?._id,
+        {       // Mongo Operators
+            $set: {
+                fullName,
+                email: email    // We can do both if both names are same
+            }
+        },
+        {new: true}     // if we true new, updated information gets returned
+    ).select("-password")   // Here we saved one DB call
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(200, user, "Account Details updated successfully")
+    )
+})
