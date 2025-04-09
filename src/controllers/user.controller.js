@@ -403,7 +403,7 @@ export const updateUserAvatar = asyncHandler(async(req, res) => {
 
     // Now everything's updated, so we can delete old avatar Image from cloudinary
 
-    deleteOldAvatarFromCloudinary(oldAvatar);
+    await deleteOldAvatarFromCloudinary(oldAvatar);
 
     return res
     .status(200)

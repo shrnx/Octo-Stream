@@ -15,14 +15,15 @@ const deleteOldAvatarFromCloudinary = async (oldAvatar) => {
         const removedPngfromavatarId = avatarIdforCloudinary.split(".")
         const finalAvatarId = removedPngfromavatarId[0]
     
-        cloudinary.uploader.destroy(
+        await cloudinary.uploader.destroy(
             finalAvatarId,
             function(err, result) { 
                 console.log(result) 
             }
         );
+        
     } catch (error) {
-        throw new ApiError(500, "Error deleting from cloudinary")
+        throw new ApiError(500, "Error deleting from cloudinary: " + error)
     }
 }
 
