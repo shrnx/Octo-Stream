@@ -346,3 +346,30 @@ export const updateAccountDetails = asyncHandler(async(req, res) => {
         new ApiResponse(200, user, "Account Details updated successfully")
     )
 })
+
+export const updateUserAvatar = asyncHandler(async(req, res) => {
+    // In this route we will use auth as well as multer middleware
+    
+    // Here we are using file not files as earlier we were taking both avatar and coverImag, but here we are taking avatar only(single file)
+    const avatarLocalPath = req.file?.path
+
+    if(!avatarLocalPath) {
+        throw new ApiError(400, "Avatar file is missing")
+    }
+
+    const avatar = await uploadOnCloudinary(avatarLocalPath)
+
+    if(!avatar.url) {
+        throw new ApiError(500, "Error while uploading on avatar")
+    }
+
+    await User.findByIdAndUpdate(
+        req.user?._id,
+        {
+            $set: {
+                avatar: avatar.url      // Cautious here, we don't want to store whole avatar object here.
+            }
+        },
+        {new: true}        
+    ).select("-password")
+})
