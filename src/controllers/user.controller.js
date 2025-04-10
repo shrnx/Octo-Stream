@@ -6,6 +6,7 @@ import { uploadOnCloudinary } from "../utils/cloudinary.js"
 import { ApiResponse } from "../utils/apiResponse.js"
 import jwt from 'jsonwebtoken'
 import { deleteOldAvatarFromCloudinary } from "../utils/deleteOldAvatarFromCloudinary.js"
+import { deleteOldCoverImageFromCloudinary } from "../utils/deleteOldCoverImageFromCloudinary.js"
 
 const generateAccessAndRefreshTokens = async(userId) => {
     try {
@@ -413,7 +414,15 @@ export const updateUserAvatar = asyncHandler(async(req, res) => {
 })
 
 export const updateUserCoverImage = asyncHandler(async(req, res) => {
-    const coverImageLocalPath = req.file?.path
+    let coverImageLocalPath;
+    if(req.files && Array.isArray(req.files.coverImage) && req.files.coverImage.length > 0) {
+        coverImageLocalPath = req.files.coverImage[0].path;
+    }
+
+    console.log(coverImageLocalPath)
+
+    // Also we need to store old CoverImage path if there
+    const oldCoverImage = req.user?.coverImage
 
     if(!coverImageLocalPath) {
         throw new ApiError(400, "Cover Image file is missing")
@@ -434,6 +443,11 @@ export const updateUserCoverImage = asyncHandler(async(req, res) => {
         },
         {new: true}
     ).select("-password")
+
+    // After everything's done we need to delete old CoverImage from cloudinary if there was any
+    if(oldCoverImage) {
+        deleteOldCoverImageFromCloudinary(oldCoverImage);
+    }
 
     return res
     .status(200)

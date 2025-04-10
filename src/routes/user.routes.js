@@ -5,6 +5,7 @@ import { upload } from "../middlewares/multer.middleware.js"
 import { verifyJWT } from "../middlewares/auth.middleware.js"
 import { refreshAccessToken } from "../controllers/user.controller.js"
 import { updateUserAvatar } from "../controllers/user.controller.js"
+import { updateUserCoverImage } from "../controllers/user.controller.js"
 
 router.route("/register").post(
     upload.fields([         // Multer Middleware, so that we can send images
@@ -36,6 +37,15 @@ router.route("/updateAvatar").patch(
         maxCount: 1
     }]), 
     updateUserAvatar
+)
+
+router.route("/updateCoverImage").patch(
+    verifyJWT,
+    upload.fields([{
+        name: "coverImage",
+        maxCount: 1
+    }]),
+    updateUserCoverImage
 )
 
 export default router
