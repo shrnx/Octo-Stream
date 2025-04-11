@@ -6,7 +6,8 @@ import { verifyJWT } from "../middlewares/auth.middleware.js"
 import { refreshAccessToken } from "../controllers/user.controller.js"
 import { updateUserAvatar } from "../controllers/user.controller.js"
 import { updateUserCoverImage } from "../controllers/user.controller.js"
-
+import { getUserChannelProfile } from "../controllers/user.controller.js"
+ 
 router.route("/register").post(
     upload.fields([         // Multer Middleware, so that we can send images
         {
@@ -46,6 +47,25 @@ router.route("/updateCoverImage").patch(
         maxCount: 1
     }]),
     updateUserCoverImage
+)
+
+router.route("/changeCurrentPassword").patch(
+    verifyJWT,
+    changeCurrentPassword
+)
+
+router.route("/getCurrentUser").get(
+    verifyJWT,
+    getCurrentUser
+)
+
+router.route("/updateAccountDetails").post(
+    verifyJWT,
+    updateAccountDetails
+)
+
+router.route("/userChannelProfile/:username").get(      // Whenever we want to get data from req.params use routes like this ************
+    getUserChannelProfile
 )
 
 export default router
