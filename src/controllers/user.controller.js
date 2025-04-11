@@ -455,3 +455,82 @@ export const updateUserCoverImage = asyncHandler(async(req, res) => {
         new ApiResponse(200, user, "Cover Image Updated successfully")
     )
 })
+
+export const getUserChannelProfile = asyncHandler(async(req, res) => {
+    const {username} = req.params      // From URL
+
+    if(!username?.trim()) {
+        throw new ApiError(400, "Username is missing")
+    }
+
+    // const user = await User.find({username})     We can do this and then store in something 
+
+    // Or we can use Mongo Aggregation Pipelines
+    const channel = await User.aggregate([      // Pipelines returns arrays
+        {                                       // These are pipelines
+            $match:{
+                username: username?.toLowerCase()    // match username with username -> 1st pipeline
+            }                                       // Now we have filtered one document
+        },                          // On the basis of this one document we have to lookup
+        {
+            $lookup: {
+                from: "subscriptions",
+                localField: "_id",
+                foreignField: "channel",
+                as: "subscribers"
+            }                       // From this, we got how many subscribers we have
+        }, 
+        {                           // Now for how many we have subscribed
+            $lookup:  {
+                from: "subscriptions",
+                localField: "_id",
+                foreignField: "subscriber",
+                as: "subscribedTo"
+            }                      // Now we have to add these
+        },
+        {
+            $addFields: {           // This stores current value but also add new values
+                subscribersCount:{
+                    $size: "$subscribers"  // Used $ because it's a field
+                },
+                channelSubscribedToCount: {
+                    $size: "$subscribedTo"
+                },
+                isSubscribed: {
+                    $cond: {
+                        if: {
+                            $in: [req.user?._id, "$subscribers.subscriber"]    // We can go inside a field as we have used $ to represent a field
+                        },
+                        then: true,
+                        else: false
+                    }
+                }
+            }   // This add fields added 3 new fields in user Model
+        },  // Till Now we have created and added multiple fields
+        {   // Now we have to select particular fields to project as we don't want everything to be projected
+            $project: {     // To project selected fields, give value 1
+                fullName: 1,
+                username: 1,
+                subscribersCount: 1,
+                channelSubscribedToCount: 1,
+                isSubscribed: 1,
+                avatar: 1,
+                coverImage: 1,
+                email: 1
+            }
+        }
+    ]);
+
+    // console.log(channel)
+    // Channel is returning an array containing objects of users containing fields which we set as 1 in $project
+
+    if(!channel?.length) {
+        throw new ApiError(404, "channel does not exist");
+    }
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(200, channel[0], "User Channel Data Fetched successfully")
+    )
+})
