@@ -466,19 +466,20 @@ export const getUserChannelProfile = asyncHandler(async(req, res) => {
     // const user = await User.find({username})     We can do this and then store in something 
 
     // Or we can use Mongo Aggregation Pipelines
-    const channel = await User.aggregate([      // Pipelines returns arrays
+    const channel = await User.aggregate([      // Pipelines starts here and returns array of documents(even if there's just one match)
         {                                       // These are pipelines
-            $match:{
+            $match:{     // match -> filters users where username matches & reduces the scope to a single user document, which represents channel
                 username: username?.toLowerCase()    // match username with username -> 1st pipeline
             }                                       // Now we have filtered one document
         },                          // On the basis of this one document we have to lookup
         {
-            $lookup: {
+            $lookup: {      
                 from: "subscriptions",
                 localField: "_id",
                 foreignField: "channel",
                 as: "subscribers"
             }                       // From this, we got how many subscribers we have
+        
         }, 
         {                           // Now for how many we have subscribed
             $lookup:  {
