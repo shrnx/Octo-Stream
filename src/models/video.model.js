@@ -1,5 +1,6 @@
 import mongoose from 'mongoose'
 import mongooseAggregatePaginate from 'mongoose-aggregate-paginate-v2'
+import { object } from 'zod'
 
 const videoSchema = new mongoose.Schema({
     owner: {
@@ -15,7 +16,7 @@ const videoSchema = new mongoose.Schema({
         default: "No Description is provided"
     },
     duration: {
-        type: Number,       // from cloudinary
+        type: Object,       // from cloudinary
         required: true
     },
     views: {
@@ -26,7 +27,7 @@ const videoSchema = new mongoose.Schema({
         type: Boolean,
         default: true
     },
-    videoFile: {
+    video: {
         type: String,        // cloudinary URL
         required: true
     },

@@ -8,6 +8,9 @@ import { updateUserAvatar } from "../controllers/user.controller.js"
 import { updateUserCoverImage } from "../controllers/user.controller.js"
 import { getUserChannelProfile } from "../controllers/user.controller.js"
 import { getWatchHistory } from "../controllers/user.controller.js"
+import { changeCurrentPassword } from "../controllers/user.controller.js"
+import { getCurrentUser } from "../controllers/user.controller.js"
+import { updateAccountDetails } from "../controllers/user.controller.js"
 
 router.route("/register").post(
     upload.fields([         // Multer Middleware, so that we can send images
@@ -48,7 +51,7 @@ router.route("/update-coverimage").patch(
     //     name: "coverImage",
     //     maxCount: 1
     // }]),         // No need to use as will only upload single file
-    upload.single("CoverImage"),
+    upload.single("coverImage"),
     updateUserCoverImage
 )
 
