@@ -131,6 +131,7 @@ export const registerUser = asyncHandler(async (req, res) => {
         // By default everything is selected, so remove unnecessary as we will sending data back to user
         "-password -refreshToken"
     )
+    // .select() is not native mongoDB or native JS function, rather it's a mongoose function. Can't use anywhere else
 
     if (!createdUser) {
         throw new ApiError(500, "Something went wrong while registering the user")
