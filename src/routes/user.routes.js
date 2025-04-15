@@ -7,7 +7,8 @@ import { refreshAccessToken } from "../controllers/user.controller.js"
 import { updateUserAvatar } from "../controllers/user.controller.js"
 import { updateUserCoverImage } from "../controllers/user.controller.js"
 import { getUserChannelProfile } from "../controllers/user.controller.js"
- 
+import { getWatchHistory } from "../controllers/user.controller.js"
+
 router.route("/register").post(
     upload.fields([         // Multer Middleware, so that we can send images
         {
@@ -31,41 +32,49 @@ router.route("/logout").post(verifyJWT, logoutUser)
 router.route("/refresh-token").post(refreshAccessToken)
 // We have not used verifyJWT as all that is done in controller only.
 
-router.route("/updateAvatar").patch(
-    verifyJWT,
-    upload.fields([{
-        name: "avatar",
-        maxCount: 1
-    }]), 
+router.route("/update-avatar").patch(
+    // verifyJWT,
+    // upload.fields([{
+    //     name: "avatar",
+    //     maxCount: 1
+    // }]), 
+    upload.single("avatar"),
     updateUserAvatar
 )
 
-router.route("/updateCoverImage").patch(
+router.route("/update-coverimage").patch(
     verifyJWT,
-    upload.fields([{
-        name: "coverImage",
-        maxCount: 1
-    }]),
+    // upload.fields([{
+    //     name: "coverImage",
+    //     maxCount: 1
+    // }]),         // No need to use as will only upload single file
+    upload.single("CoverImage"),
     updateUserCoverImage
 )
 
-router.route("/changeCurrentPassword").patch(
+router.route("/change-Password").patch(
     verifyJWT,
     changeCurrentPassword
 )
 
-router.route("/getCurrentUser").get(
+router.route("/current-User").get(
     verifyJWT,
     getCurrentUser
 )
 
-router.route("/updateAccountDetails").post(
+router.route("/update-account-details").patch(
     verifyJWT,
     updateAccountDetails
 )
 
-router.route("/userChannelProfile/:username").get(      // Whenever we want to get data from req.params use routes like this ************
+router.route("/channel/:username").get(      // Whenever we want to get data from req.params use routes like this ************
+    verifyJWT,
     getUserChannelProfile
+)
+
+router.route("/history").get(
+    verifyJWT,
+    getWatchHistory
 )
 
 export default router
