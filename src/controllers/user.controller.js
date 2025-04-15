@@ -536,3 +536,68 @@ export const getUserChannelProfile = asyncHandler(async(req, res) => {
         new ApiResponse(200, channel[0], "User Channel Data Fetched successfully")
     )
 })
+
+
+// So now we will write sub pipelines(pipeline of a pipeline), as we want Watch History of User. And that Watch History will have a field owner which we can't get directly by chaining in Mongo. So we again have to lookup and join again.
+
+export const getWatchHistory = asyncHandler(async(req, res) => {
+    // req.user._id
+    // Here we will get a string only not mongoDB id as that is whole ObjectId"String", mongoose simplifies the process by returning just the string
+
+    const user = await User.aggregate([
+        {
+            $match: {
+                // _id: req.user._id    This is wrong here because mongoose does not work here. All aggregation pipeline codes goes directly not from mongoose
+
+                _id: new mongoose.Types.ObjectId(req.user._id)  // Now we got user 
+            }
+        },   // And now we have to lookup
+        {
+            $lookup: {
+                from: "videos",
+                localField: "watchHistory",
+                foreignField: "_id",
+                as: "watchHistory",
+                // Here now we have to create a new pipeline as we got Watch History which indeed does have a field owner but we cant get ny information out of it.
+                pipeline: [
+                    {   // Currently we are in Videos
+                        $lookup: {
+                            from: "users",
+                            localField: "owner",
+                            foreignField: "_id",
+                            as: "owner",    // We got all the info of ther owner(user) which we doesn't want to give all, only selected is what we want. So again a pipeline
+                            pipeline: [
+                                {
+                                    $project: {
+                                        fullName: 1,
+                                        username: 1,
+                                        avatar: 1
+                                        // This will store only these data of owner and return it.
+                                    }
+                                }
+                            ]   // Self -> Try this project outside, or we can say along with lookup
+                        }
+                    }, // Ok so now this(project) will return an array in which at 0th index, all data will be present.
+                    // But only for Frontend's convenience we will not return an array instead directly return all the data
+                    {
+                        $addFields: {
+                            owner: {    // This will overwrite the owner array to data which was present in 0th index
+                                $first: "$owner"    // field me se nikale that's why $
+                            }
+                        }
+                    }   // We can also directly give array, no problem
+                ]
+            }
+        }
+    ])
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(
+            200,
+            user[0].watchHistory,       // If we give whole user info we will be sending xtra unnecessary info
+            "Watch History Fetched successfully"
+        )
+    )
+})
