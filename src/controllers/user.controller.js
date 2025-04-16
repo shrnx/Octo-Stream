@@ -8,24 +8,24 @@ import jwt from 'jsonwebtoken'
 import { deleteOldAvatarFromCloudinary } from "../utils/deleteOldAvatarFromCloudinary.js"
 import { deleteOldCoverImageFromCloudinary } from "../utils/deleteOldCoverImageFromCloudinary.js"
 
-const generateAccessAndRefreshTokens = async(userId) => {
+const generateAccessAndRefreshTokens = async (userId) => {
     try {
         const user = await User.findById(userId)
         const accessToken = user.generateAccessToken()
         const refreshToken = user.generateRefreshToken()
 
         user.refreshToken = refreshToken;
-        await user.save({validateBeforeSave: false})     // From mongo, so whenever we use mongo methods all the fields are kicked in, like then we also have to put password etc.
+        await user.save({ validateBeforeSave: false })     // From mongo, so whenever we use mongo methods all the fields are kicked in, like then we also have to put password etc.
         // So we use {validateBeforeSave: false}, it's like we dont want any validations, we know what we are doing.
         // And since we are not doing anything related to password we can simply put validateBeforeSave as false.
 
-        return {accessToken, refreshToken}
+        return { accessToken, refreshToken }
 
 
-    } catch(error) {
+    } catch (error) {
         throw new ApiError(500, "Something went wrong while generating access and refresh tokens")
     }
-} 
+}
 
 export const registerUser = asyncHandler(async (req, res) => {
     // Get user data from frontend
@@ -62,7 +62,7 @@ export const registerUser = asyncHandler(async (req, res) => {
 
     const parsedDataWithSuccess = requiredBody.safeParse(req.body);
 
-    if(!parsedDataWithSuccess.success) {
+    if (!parsedDataWithSuccess.success) {
         throw new ApiError(400, `Error: ${parsedDataWithSuccess.error}`)
     }
 
@@ -76,31 +76,31 @@ export const registerUser = asyncHandler(async (req, res) => {
     // const userExists = User.findOne({
     //     $or: [{ username }, { email }]      // checks all the values present in the object
     // })
-    const usernameExists = await User.findOne({username: parsedUsername});
+    const usernameExists = await User.findOne({ username: parsedUsername });
     if (usernameExists) {
         throw new ApiError(409, "User with username exists");
     };
 
-    const emailExists = await User.findOne({email: parsedEmail});
+    const emailExists = await User.findOne({ email: parsedEmail });
     if (emailExists) {
         throw new ApiError(409, "User with email exists");
     };
 
     // Everything here checked, no issues, working fine till now.
 
-    
+
     // From multer middleware                                // Got Error here: Cannot read properties of undefined when files not uploaded
-    
+
     // const avatarLocalPath = req.files?.avatar[0]?.path;      // Check this through console.log
     // const coverImageLocalPath = req.files?.coverImage[0]?.path;
 
     let avatarLocalPath;
-    if(req.files && Array.isArray(req.files.avatar) && req.files.avatar.length > 0) {
+    if (req.files && Array.isArray(req.files.avatar) && req.files.avatar.length > 0) {
         avatarLocalPath = req.files.avatar[0].path
     }
 
     let coverImageLocalPath;
-    if(req.files && Array.isArray(req.files.coverImage) && req.files.coverImage.length > 0) {
+    if (req.files && Array.isArray(req.files.coverImage) && req.files.coverImage.length > 0) {
         coverImageLocalPath = req.files.coverImage[0].path;
     }
 
@@ -127,7 +127,7 @@ export const registerUser = asyncHandler(async (req, res) => {
         username: parsedUsername
     })
 
-    const createdUser = await User.find(user._id).select(   
+    const createdUser = await User.find(user._id).select(
         // By default everything is selected, so remove unnecessary as we will sending data back to user
         "-password -refreshToken"
     )
@@ -151,7 +151,7 @@ export const loginUser = asyncHandler(async (req, res) => {
     // generate an access & refresh token and store in browser
     // login the user(send the cookie)
 
-    const{username, password, email} = req.body;
+    const { username, password, email } = req.body;
 
     const requiredBody = z.object({
         email: z.string().min(5).max(100).email().trim().toLowerCase(),
@@ -161,7 +161,7 @@ export const loginUser = asyncHandler(async (req, res) => {
 
     const parsedDataWithSuccess = requiredBody.safeParse(req.body);
 
-    if(!parsedDataWithSuccess.success) {
+    if (!parsedDataWithSuccess.success) {
         throw new ApiError(400, `Error: ${parsedDataWithSuccess.error}`)
     }
 
@@ -170,20 +170,41 @@ export const loginUser = asyncHandler(async (req, res) => {
     const parsedPassword = parsedDataWithSuccess.data.password;
 
     const user = await User.findOne({
-        $or: [{username: parsedUsername}, {email: parsedEmail}]  // Mongo Operators
+        $or: [{ username: parsedUsername }, { email: parsedEmail }]  // Mongo Operators
     })
 
-    if(!user) {
+    if (!user) {
         throw new ApiError(404, "User does not exist")
     }
 
     const isPasswordValid = await user.isPasswordCorrect(parsedPassword);
 
-    if(!isPasswordValid) {
+    if (!isPasswordValid) {
         throw new ApiError(401, "Incorrect user credentials")
     }
 
-    const {accessToken,refreshToken} = await generateAccessAndRefreshTokens(user._id);
+
+    // Since all credentials are validated
+    // ********* I need to add old refresh token gets deleted option but before new Tokens are generated *********
+
+    // await user.save(
+    //     {
+    //         $set: {
+    //             refreshToken: undefined     // Now this will delete the refreshToken and act like we logout and login again
+    //         }
+    //     },
+    //     {
+    //         new: true
+    //     },
+    //     {
+    //         validateBeforeSave: false   // We don't want to run any other validations
+    //     }
+    // )            *********** I am treating save as updatOne, this doesn't work, instead change first then save
+
+    user.refreshToken = undefined;
+    await user.save({ validateBeforeSave: false })
+
+    const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(user._id);
 
     // Now here we have to decide do we want this high cost db call as we could have directly modified the object also.
     const loggedInUser = await User.findById(user._id).select("-password -refreshToken")
@@ -202,23 +223,23 @@ export const loginUser = asyncHandler(async (req, res) => {
     // Did some heavy console.log here to make delete function for cloudinary image
 
     return res.status(200)
-    .cookie("accessToken", accessToken, options)
-    .cookie("refreshToken", refreshToken, options)
-    .json(
-        new ApiResponse(
-            200, 
-            {
-            user: loggedInUser, accessToken, refreshToken
-            },
-            "User Logged In Successfully"
-        ), 
-    )
+        .cookie("accessToken", accessToken, options)
+        .cookie("refreshToken", refreshToken, options)
+        .json(
+            new ApiResponse(
+                200,
+                {
+                    user: loggedInUser, accessToken, refreshToken
+                },
+                "User Logged In Successfully"
+            ),
+        )
     // If we have already set tokens in cookies, why we are doing it again, maybe if the user needs this for localStorage, or if user is a mobile developer as there cookies will not be set automatically.
 })
 
-    
+
 // Logout User
-export const logoutUser = asyncHandler(async(req, res) => {
+export const logoutUser = asyncHandler(async (req, res) => {
     await User.findByIdAndUpdate(
         req.user._id,   // We directly got req.user because of the secured auth middleware.
         {
@@ -237,58 +258,58 @@ export const logoutUser = asyncHandler(async(req, res) => {
     }
 
     return res
-    .status(200)
-    .clearCookie("accessToken", options)
-    .clearCookie("refreshToken", options)
-    .json(
-        new ApiResponse(200, {}, "User Logged Out")
-    )                   // I will not give any data
+        .status(200)
+        .clearCookie("accessToken", options)
+        .clearCookie("refreshToken", options)
+        .json(
+            new ApiResponse(200, {}, "User Logged Out")
+        )                   // I will not give any data
 })
 
 // Refresh Access Token
-export const refreshAccessToken = asyncHandler(async(req, res) => {
+export const refreshAccessToken = asyncHandler(async (req, res) => {
     try {
         const incomingRefreshToken = req.cookoes.refreshToken || req.body.refreshToken      // If there is mobile dev who will give by body
-    
-        if(!incomingRefreshToken) {
+
+        if (!incomingRefreshToken) {
             throw new ApiError(401, "Unauthorized Request")
         }
-    
+
         const decodedToken = jwt.verify(incomingRefreshToken, process.env.REFRESH_TOKEN_SECRET)
-    
+
         const user = await User.findById(decodedToken._id);
-    
-        if(!user) {
+
+        if (!user) {
             throw new ApiError(401, "Invalid Refresh Token")
         }
-    
+
         // If we are here, that means we have valid token\
-    
-        if(incomingRefreshToken !== user?.refreshToken) {
+
+        if (incomingRefreshToken !== user?.refreshToken) {
             throw new ApiError(401, "Refresh Token is expired or used")
         }
-    
+
         const options = {
             httpOnly: true,
             secure: true
         }
-    
-        const {accessToken, newRefreshToken} = await generateAccessAndRefreshTokens(user._id)
-    
+
+        const { accessToken, newRefreshToken } = await generateAccessAndRefreshTokens(user._id)
+
         return res
-        .status(200)
-        .cookie("accessToken", accessToken)
-        .cookie("refreshToken", newRefreshToken)
-        .json(
-            new ApiResponse(
-                200,
-                {
-                    accessToken, 
-                    refreshToken: newRefreshToken
-                },
-                "Access Tokens Renewed"
+            .status(200)
+            .cookie("accessToken", accessToken)
+            .cookie("refreshToken", newRefreshToken)
+            .json(
+                new ApiResponse(
+                    200,
+                    {
+                        accessToken,
+                        refreshToken: newRefreshToken
+                    },
+                    "Access Tokens Renewed"
+                )
             )
-        )
     } catch (error) {
         throw new ApiError(401, error?.message || "Invalid Refresh Token")
     }
@@ -296,10 +317,10 @@ export const refreshAccessToken = asyncHandler(async(req, res) => {
 })
 
 
-export const changeCurrentPassword = asyncHandler(async(req, res) => {
-    const {oldPassword, newPassword, confirmPassword} = req.body;
+export const changeCurrentPassword = asyncHandler(async (req, res) => {
+    const { oldPassword, newPassword, confirmPassword } = req.body;
 
-    if(newPassword !== confirmPassword) {
+    if (newPassword !== confirmPassword) {
         throw new ApiError(400, "newPassword and confirmPassword are not same")
     }
 
@@ -309,9 +330,9 @@ export const changeCurrentPassword = asyncHandler(async(req, res) => {
 
     // Now we have found user and need to check is oldPassword correct(same as stored in DB), we can use isPasswordCorrect method made in user Model.
 
-    const isPasswordCorrect =  await user.isPasswordCorrect(oldPassword)
+    const isPasswordCorrect = await user.isPasswordCorrect(oldPassword)
 
-    if(!isPasswordCorrect) {
+    if (!isPasswordCorrect) {
         throw new ApiError(400, "Invalid oldPassword")
     }
 
@@ -323,31 +344,31 @@ export const changeCurrentPassword = asyncHandler(async(req, res) => {
     })
 
     return res
-    .status(200)
-    .json(
-        new ApiResponse(
-            200,
-            {},         // We don't want to send any data here
-            "Password changed successfully"
+        .status(200)
+        .json(
+            new ApiResponse(
+                200,
+                {},         // We don't want to send any data here
+                "Password changed successfully"
+            )
         )
-    )
 })
 
-export const getCurrentUser = asyncHandler(async(req, res) => {
-    // We can use auth middleware to directly return user info
+export const getCurrentUser = asyncHandler(async (req, res) => {
+    // We can use auth(verifyJWT) middleware to directly return user info
 
-    // We don't need user validation here as if user is authenticated then that means user is present in DB
-
+    // We don't need user validation here as if user is authenticated then that means user is present in DB, verifyJWT will handle.
+    // If not logged in, will get unauthorized access error
     return res
-    .status(200)
-    .json(200, req.user, "Current User fetched successfully")
+        .status(200)
+        .json(200, req.user, "Current User fetched successfully")
 })
 
 
-export const updateAccountDetails = asyncHandler(async(req, res) => {
-    const { fullName, email} = req.body       // If we want to update files make another controller and routes for it, it's better practise
+export const updateAccountDetails = asyncHandler(async (req, res) => {
+    const { fullName, email } = req.body       // If we want to update files make another controller and routes for it, it's better practise
 
-    if(!fullName || !email) {
+    if (!fullName || !email) {
         throw new ApiError(400, "All fields are required")
     }
 
@@ -359,35 +380,35 @@ export const updateAccountDetails = asyncHandler(async(req, res) => {
                 email: email    // We can do both if both names are same
             }
         },
-        {new: true}     // if we true new, updated information gets returned
+        { new: true }     // if we true new, updated information gets returned
     ).select("-password")   // Here we saved one DB call
 
     return res
-    .status(200)
-    .json(
-        new ApiResponse(200, user, "Account Details updated successfully")
-    )
+        .status(200)
+        .json(
+            new ApiResponse(200, user, "Account Details updated successfully")
+        )
 })
 
-export const updateUserAvatar = asyncHandler(async(req, res) => {
+export const updateUserAvatar = asyncHandler(async (req, res) => {
     // In this route we will use auth as well as multer middleware
-    
+
     // Here we are using file not files as earlier we were taking both avatar and coverImag, but here we are taking avatar only(single file)
     let avatarLocalPath;
-    if(req.files && Array.isArray(req.files.avatar) && req.files.avatar.length > 0) {   // Got error because doing .length[0] here, bro wahi to check karna tha
+    if (req.files && Array.isArray(req.files.avatar) && req.files.avatar.length > 0) {   // Got error because doing .length[0] here, bro wahi to check karna tha
         avatarLocalPath = req.files.avatar[0].path
     }
 
     // Also we have to delete old Avatar so let's save it's name somewhere
     const oldAvatar = req.user?.avatar
 
-    if(!avatarLocalPath) {
+    if (!avatarLocalPath) {
         throw new ApiError(400, "Avatar file is missing")
     }
 
     const avatar = await uploadOnCloudinary(avatarLocalPath)
 
-    if(!avatar.url) {
+    if (!avatar.url) {
         throw new ApiError(500, "Error while uploading an avatar")
     }
 
@@ -397,10 +418,10 @@ export const updateUserAvatar = asyncHandler(async(req, res) => {
             $set: {
                 avatar: avatar.url      // Cautious here, we don't want to store whole avatar object here.
             }
-        // When we are dealing with cloudinary, it returns avatar as an object that's why we use .url to get the url directly
-        // Whereas in oldAvatar, mongo is directly returning avatar url, so no need for extra .url
+            // When we are dealing with cloudinary, it returns avatar as an object that's why we use .url to get the url directly
+            // Whereas in oldAvatar, mongo is directly returning avatar url, so no need for extra .url
         },
-        {new: true}        
+        { new: true }
     ).select("-password")
 
     // Now everything's updated, so we can delete old avatar Image from cloudinary
@@ -408,15 +429,15 @@ export const updateUserAvatar = asyncHandler(async(req, res) => {
     await deleteOldAvatarFromCloudinary(oldAvatar);
 
     return res
-    .status(200)
-    .json(
-        new ApiResponse(200, user, "Avatar Updated successfully")
-    )
+        .status(200)
+        .json(
+            new ApiResponse(200, user, "Avatar Updated successfully")
+        )
 })
 
-export const updateUserCoverImage = asyncHandler(async(req, res) => {
+export const updateUserCoverImage = asyncHandler(async (req, res) => {
     let coverImageLocalPath;
-    if(req.files && Array.isArray(req.files.coverImage) && req.files.coverImage.length > 0) {
+    if (req.files && Array.isArray(req.files.coverImage) && req.files.coverImage.length > 0) {
         coverImageLocalPath = req.files.coverImage[0].path;
     }
 
@@ -425,13 +446,13 @@ export const updateUserCoverImage = asyncHandler(async(req, res) => {
     // Also we need to store old CoverImage path if there
     const oldCoverImage = req.user?.coverImage
 
-    if(!coverImageLocalPath) {
+    if (!coverImageLocalPath) {
         throw new ApiError(400, "Cover Image file is missing")
     }
 
     const coverImage = await uploadOnCloudinary(coverImageLocalPath)
 
-    if(!coverImage.url) {
+    if (!coverImage.url) {
         throw new ApiError(500, "Error while uploading Cover Image")
     }
 
@@ -442,25 +463,25 @@ export const updateUserCoverImage = asyncHandler(async(req, res) => {
                 coverImage: coverImage.url
             }
         },
-        {new: true}
+        { new: true }
     ).select("-password")
 
     // After everything's done we need to delete old CoverImage from cloudinary if there was any
-    if(oldCoverImage) {
+    if (oldCoverImage) {
         deleteOldCoverImageFromCloudinary(oldCoverImage);
     }
 
     return res
-    .status(200)
-    .json(
-        new ApiResponse(200, user, "Cover Image Updated successfully")
-    )
+        .status(200)
+        .json(
+            new ApiResponse(200, user, "Cover Image Updated successfully")
+        )
 })
 
-export const getUserChannelProfile = asyncHandler(async(req, res) => {
-    const {username} = req.params      // From URL
+export const getUserChannelProfile = asyncHandler(async (req, res) => {
+    const { username } = req.params      // From URL
 
-    if(!username?.trim()) {
+    if (!username?.trim()) {
         throw new ApiError(400, "Username is missing")
     }
 
@@ -469,21 +490,21 @@ export const getUserChannelProfile = asyncHandler(async(req, res) => {
     // Or we can use Mongo Aggregation Pipelines
     const channel = await User.aggregate([      // Pipelines starts here and returns array of documents(even if there's just one match)
         {                                       // These are pipelines
-            $match:{     // match -> filters users where username matches & reduces the scope to a single user document, which represents channel
+            $match: {     // match -> filters users where username matches & reduces the scope to a single user document, which represents channel
                 username: username?.toLowerCase()    // match username with username -> 1st pipeline
             }                                       // Now we have filtered one document
         },                          // On the basis of this one document we have to lookup
         {
-            $lookup: {      
+            $lookup: {
                 from: "subscriptions",
                 localField: "_id",
                 foreignField: "channel",
                 as: "subscribers"
             }                       // From this, we got how many subscribers we have
-        
-        }, 
+
+        },
         {                           // Now for how many we have subscribed
-            $lookup:  {
+            $lookup: {
                 from: "subscriptions",
                 localField: "_id",
                 foreignField: "subscriber",
@@ -492,7 +513,7 @@ export const getUserChannelProfile = asyncHandler(async(req, res) => {
         },
         {
             $addFields: {           // This stores current value but also add new values
-                subscribersCount:{
+                subscribersCount: {
                     $size: "$subscribers"  // Used $ because it's a field
                 },
                 channelSubscribedToCount: {
@@ -526,21 +547,21 @@ export const getUserChannelProfile = asyncHandler(async(req, res) => {
     // console.log(channel)
     // Channel is returning an array containing objects of users containing fields which we set as 1 in $project
 
-    if(!channel?.length) {
+    if (!channel?.length) {
         throw new ApiError(404, "channel does not exist");
     }
 
     return res
-    .status(200)
-    .json(
-        new ApiResponse(200, channel[0], "User Channel Data Fetched successfully")
-    )
+        .status(200)
+        .json(
+            new ApiResponse(200, channel[0], "User Channel Data Fetched successfully")
+        )
 })
 
 
 // So now we will write sub pipelines(pipeline of a pipeline), as we want Watch History of User. And that Watch History will have a field owner which we can't get directly by chaining in Mongo. So we again have to lookup and join again.
 
-export const getWatchHistory = asyncHandler(async(req, res) => {
+export const getWatchHistory = asyncHandler(async (req, res) => {
     // req.user._id
     // Here we will get a string only not mongoDB id as that is whole ObjectId"String", mongoose simplifies the process by returning just the string
 
@@ -592,12 +613,12 @@ export const getWatchHistory = asyncHandler(async(req, res) => {
     ])
 
     return res
-    .status(200)
-    .json(
-        new ApiResponse(
-            200,
-            user[0].watchHistory,       // If we give whole user info we will be sending xtra unnecessary info
-            "Watch History Fetched successfully"
+        .status(200)
+        .json(
+            new ApiResponse(
+                200,
+                user[0].watchHistory,       // If we give whole user info we will be sending xtra unnecessary info
+                "Watch History Fetched successfully"
+            )
         )
-    )
 })

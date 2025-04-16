@@ -36,7 +36,7 @@ router.route("/refresh-token").post(refreshAccessToken)
 // We have not used verifyJWT as all that is done in controller only.
 
 router.route("/update-avatar").patch(
-    // verifyJWT,
+    verifyJWT,
     // upload.fields([{
     //     name: "avatar",
     //     maxCount: 1
@@ -55,12 +55,12 @@ router.route("/update-coverimage").patch(
     updateUserCoverImage
 )
 
-router.route("/change-Password").patch(
+router.route("/change-password").patch(
     verifyJWT,
     changeCurrentPassword
 )
 
-router.route("/current-User").get(
+router.route("/current-user").get(
     verifyJWT,
     getCurrentUser
 )
