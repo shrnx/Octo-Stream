@@ -201,7 +201,7 @@ export const loginUser = asyncHandler(async (req, res) => {
     //     }
     // )            *********** I am treating save as updatOne, this doesn't work, instead change first then save
 
-    user.refreshToken = undefined;
+    user.refreshToken = undefined;      // This removes the field from the document
     await user.save({ validateBeforeSave: false })
 
     const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(user._id);
@@ -243,8 +243,8 @@ export const logoutUser = asyncHandler(async (req, res) => {
     await User.findByIdAndUpdate(
         req.user._id,   // We directly got req.user because of the secured auth middleware.
         {
-            $set: {
-                refreshToken: undefined
+            $unset: {
+                refreshToken: 1     // This removes the field from the document -> Better practise
             }
         },
         {
