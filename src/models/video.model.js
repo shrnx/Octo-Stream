@@ -1,5 +1,6 @@
 import mongoose from 'mongoose'
-import mongooseAggregatePaginate from 'mongoose-aggregate-paginate-v2'
+import mongooseAggregatePaginate from 'mongoose-aggregate-paginate-v2'   // Use where we don't want to give all data at the same time
+// Rather we want pagination or some data then some data
 import { object } from 'zod'
 
 const videoSchema = new mongoose.Schema({
@@ -38,5 +39,6 @@ const videoSchema = new mongoose.Schema({
 }, {timestamps: true})
 
 videoSchema.plugin(mongooseAggregatePaginate)       // This will let us write us Aggregation Queries(not normal queries)
+// This only does from where to where will it return data(videos, comments etc)
 
 export const Video = mongoose.model("Video", videoSchema)
