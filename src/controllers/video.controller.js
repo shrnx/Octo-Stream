@@ -6,6 +6,7 @@ import { uploadVideoOnCloudinary } from '../utils/cloudinary.js';
 import { ApiResponse } from "../utils/apiResponse.js"
 import { uploadOnCloudinary } from '../utils/cloudinary.js';
 import { deleteOldThumbnailFromCloudinary } from '../utils/deleteOldThumbnailFromCloudinary.js'
+import { deleteVideoFromCloudinary } from "../utils/deleteVideoFromCloudinary.js"
 
 export const uploadVideoOnChannel = asyncHandler(async (req, res) => {
     try {
@@ -190,4 +191,39 @@ export const updateVideo = asyncHandler(async (req, res) => {
         .json(
             new ApiResponse(200, updatedVideoInfo, "Details of video updated successfully")
         )
+})
+
+export const deleteVideo = asyncHandler(async (req, res) => {
+    const { videoId } = req.params
+    //TODO: delete video
+    if(!videoId || !mongoose.Types.ObjectId.isValid(videoId)) {
+        throw new ApiError(400, "A valid video ID is required");        // This is added because someone can give 1234 etc also as a video Id
+    }
+
+    const video = await Video.findById(videoId);
+    // Why I directly didn't deleted from MongoDB, because 1st I need to delete from cloudinary, for that I need URL's stored in MongoDB
+
+    if(!video) {
+        throw new ApiError(404, "Video does not exist")
+    }
+
+    const thumbnailURL = video.thumbnail
+    const videoURL = video.video
+
+    try {
+        await deleteOldThumbnailFromCloudinary(thumbnailURL)
+        await deleteVideoFromCloudinary(videoURL)
+    } catch (error) {
+        console.error("Something went wrong: ", error);
+        throw new ApiError(500, "Failed to delete video assets from Cloudinary");
+    }
+
+    // await Video.findByIdAndDelete(videoId)       This is unnecessary DB call
+    await video.deleteOne()
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(200, { videoId }, "Video Deleted Successfully")
+    )
 })
