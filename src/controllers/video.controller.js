@@ -5,6 +5,7 @@ import { Video } from "../models/video.model.js"
 import { uploadVideoOnCloudinary } from '../utils/cloudinary.js';
 import { ApiResponse } from "../utils/apiResponse.js"
 import { uploadOnCloudinary } from '../utils/cloudinary.js';
+import { deleteOldThumbnailFromCloudinary } from '../utils/deleteOldThumbnailFromCloudinary.js'
 
 export const uploadVideoOnChannel = asyncHandler(async (req, res) => {
     try {
@@ -70,7 +71,7 @@ export const uploadVideoOnChannel = asyncHandler(async (req, res) => {
 
         // console.log(createdVideo)
 
-                            // Commenting Response Structure(Making Code Dev-Friendly)
+        // Commenting Response Structure(Making Code Dev-Friendly)
         // Response:
         // {
         //   success: true,
@@ -99,13 +100,13 @@ export const uploadVideoOnChannel = asyncHandler(async (req, res) => {
 
 export const getVideoById = asyncHandler(async (req, res) => {
     const { videoId } = req.params      // videoId is mongoose Id
-    if(!videoId) {
+    if (!videoId) {
         throw new ApiError(400, "Video Id is required");
     }
 
     const video = await Video.findById(videoId)
 
-    if(!video) {
+    if (!video) {
         throw new ApiError(400, "Video does not exist")
     }
 
@@ -113,9 +114,80 @@ export const getVideoById = asyncHandler(async (req, res) => {
     console.log(returnVideo)
 
     return res
-    .status(200)
-    .json(
-        new ApiResponse(200, returnVideo, "Video retrieved successfully")
+        .status(200)
+        .json(
+            new ApiResponse(200, returnVideo, "Video retrieved successfully")
+        )
+
+})
+
+export const updateVideo = asyncHandler(async (req, res) => {
+    const { videoId } = req.params
+    //TODO: update video details like title, description, thumbnail
+
+    if (!videoId) {
+        throw new ApiError(400, "Video Id is required");
+    }
+
+    // const { title, description, thumbnail } = req.body           No need
+    const requiredBody = z.object({
+        title: z.string().min(1, "There should be a title").max(50, "Title length can't be more than 50 characters"),
+        description: z.string().max(200, "Description length can't be more than 200 characters")
+    })  // Now we have created a blueprint what validated data should look.
+
+    const parsedDataWithSuccess = requiredBody.safeParse(req.body)     // Now here we are finally validating data.
+
+    if (!parsedDataWithSuccess.success) {
+        // throw new ApiError(400, `Error: ${parsedDataWithSuccess.error}`)
+        const formatted = parsedDataWithSuccess.error.flatten();
+        throw new ApiError(400, `Validation Error`, formatted);         // This will give better ZOD messages
+    }
+
+    const parsedTitle = parsedDataWithSuccess.data.title;
+    const parsedDescription = parsedDataWithSuccess.data.description;
+
+    let thumbnailLocalPath;
+    if (req.files && Array.isArray(req.files.thumbnail) && req.files.thumbnail.length > 0) {
+        thumbnailLocalPath = req.files.thumbnail[0].path
+    }
+
+    if (!thumbnailLocalPath) {
+        throw new ApiError(400, "Thumbnail is needed")
+    }
+
+    const video = await Video.findById(videoId)
+
+    if (!video) {
+        throw new ApiError(404, "Video does not exist")
+    }
+
+    const oldThumbnailURL = video.thumbnail
+
+    const newThumbnail = await uploadOnCloudinary(thumbnailLocalPath)
+
+    const updatedVideoInfo = await Video.findByIdAndUpdate(
+        videoId,
+        {
+            $set: {
+                title: parsedTitle,
+                description: parsedDescription,
+                thumbnail: newThumbnail.secure_url
+            }
+        },
+        { new: true }
     )
 
+    // If we are here, it means we can delete the old Thumbnail as new Thumbnail has been updated.
+    try {
+        await deleteOldThumbnailFromCloudinary(oldThumbnailURL);
+        console.log("Deleted Old Thumbnail Successfully")
+    } catch (error) {
+        console.error("Error Deleting Old Thumbnail: ", error)
+    }
+
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(200, updatedVideoInfo, "Details of video updated successfully")
+        )
 })
