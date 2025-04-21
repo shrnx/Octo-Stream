@@ -101,8 +101,8 @@ export const uploadVideoOnChannel = asyncHandler(async (req, res) => {
 
 export const getVideoById = asyncHandler(async (req, res) => {
     const { videoId } = req.params      // videoId is mongoose Id
-    if (!videoId) {
-        throw new ApiError(400, "Video Id is required");
+    if(!videoId || !mongoose.Types.ObjectId.isValid(videoId)) {
+        throw new ApiError(400, "A valid video ID is required");        // This is added because someone can give 1234 etc also as a video Id
     }
 
     const video = await Video.findById(videoId)
@@ -126,8 +126,8 @@ export const updateVideo = asyncHandler(async (req, res) => {
     const { videoId } = req.params
     //TODO: update video details like title, description, thumbnail
 
-    if (!videoId) {
-        throw new ApiError(400, "Video Id is required");
+    if(!videoId || !mongoose.Types.ObjectId.isValid(videoId)) {
+        throw new ApiError(400, "A valid video ID is required");        // This is added because someone can give 1234 etc also as a video Id
     }
 
     // const { title, description, thumbnail } = req.body           No need
