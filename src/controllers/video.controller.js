@@ -96,3 +96,26 @@ export const uploadVideoOnChannel = asyncHandler(async (req, res) => {
         throw new ApiError(500, "Something went wrong: " + error.message);
     }
 })
+
+export const getVideoById = asyncHandler(async (req, res) => {
+    const { videoId } = req.params      // videoId is mongoose Id
+    if(!videoId) {
+        throw new ApiError(400, "Video Id is required");
+    }
+
+    const video = await Video.findById(videoId)
+
+    if(!video) {
+        throw new ApiError(400, "Video does not exist")
+    }
+
+    const returnVideo = video.video
+    console.log(returnVideo)
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(200, returnVideo, "Video retrieved successfully")
+    )
+
+})
