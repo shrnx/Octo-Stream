@@ -102,7 +102,7 @@ export const uploadVideoOnChannel = asyncHandler(async (req, res) => {
 
 export const getVideoById = asyncHandler(async (req, res) => {
     const { videoId } = req.params      // videoId is mongoose Id
-    if(!videoId || !mongoose.Types.ObjectId.isValid(videoId)) {
+    if (!videoId || !mongoose.Types.ObjectId.isValid(videoId)) {
         throw new ApiError(400, "A valid video ID is required");        // This is added because someone can give 1234 etc also as a video Id
     }
 
@@ -127,7 +127,7 @@ export const updateVideo = asyncHandler(async (req, res) => {
     const { videoId } = req.params
     //TODO: update video details like title, description, thumbnail
 
-    if(!videoId || !mongoose.Types.ObjectId.isValid(videoId)) {
+    if (!videoId || !mongoose.Types.ObjectId.isValid(videoId)) {
         throw new ApiError(400, "A valid video ID is required");        // This is added because someone can give 1234 etc also as a video Id
     }
 
@@ -197,14 +197,14 @@ export const updateVideo = asyncHandler(async (req, res) => {
 export const deleteVideo = asyncHandler(async (req, res) => {
     const { videoId } = req.params
     //TODO: delete video
-    if(!videoId || !mongoose.Types.ObjectId.isValid(videoId)) {
+    if (!videoId || !mongoose.Types.ObjectId.isValid(videoId)) {
         throw new ApiError(400, "A valid video ID is required");        // This is added because someone can give 1234 etc also as a video Id
     }
 
     const video = await Video.findById(videoId);
     // Why I directly didn't deleted from MongoDB, because 1st I need to delete from cloudinary, for that I need URL's stored in MongoDB
 
-    if(!video) {
+    if (!video) {
         throw new ApiError(404, "Video does not exist")
     }
 
@@ -223,47 +223,53 @@ export const deleteVideo = asyncHandler(async (req, res) => {
     await video.deleteOne()
 
     return res
-    .status(200)
-    .json(
-        new ApiResponse(200, { videoId }, "Video Deleted Successfully")
-    )
+        .status(200)
+        .json(
+            new ApiResponse(200, { videoId }, "Video Deleted Successfully")
+        )
 })
 
 export const togglePublishStatus = asyncHandler(async (req, res) => {
     const { videoId } = req.params
 
-    if(!videoId || !mongoose.Types.ObjectId.isValid(videoId)) {
+    if (!videoId || !mongoose.Types.ObjectId.isValid(videoId)) {
         throw new ApiError(400, "A valid video ID is required");        // This is added because someone can give 1234 etc also as a video Id
     }
 
-    const video = await Video.findById(videoId)
+    // const video = await Video.findById(videoId)
 
-    if(!video) {
-        throw new ApiError(404, "Video does not exist")
-    }
+    // if(!video) {
+    //     throw new ApiError(404, "Video does not exist")
+    // }
 
-    const isPublished = Toggle.isPublished
+    // const isPublished = Toggle.isPublished
 
-    const toggledIsPublished = !isPublished
+    // const toggledIsPublished = !isPublished
 
     // console.log(isPublished)
     // console.log(toggledIsPublished)
 
+
+    // Updated Query only with 1 DB call.       // My earlier code was also working perfectly.     // Why this? more efficient and production level
     const finalUpdatedToggleStatus = await Video.findByIdAndUpdate(
         videoId,
-        {
-            $set: {
-                isPublished: toggledIsPublished
+        [                   // Always remember mongoose aggregation pipeline should be inside an array
+            {
+                $set: {
+                    isPublished: {
+                        $not: "$isPublished"        //  $not is a mongoose aggrgegation pipeline syntax which compliments the boolean value
+                    }
+                }
             }
-        },
-        {new: true}
+        ],
+        { new: true }
     )
     // ).then((result) => console.log(result))
     // .catch((error) => console.error("Error: ",error))
 
     return res
-    .status(200)
-    .json(
-        new ApiResponse(200, finalUpdatedToggleStatus, "Publish Status changed")
-    )
+        .status(200)
+        .json(
+            new ApiResponse(200, finalUpdatedToggleStatus, "Publish Status changed")
+        )
 })
