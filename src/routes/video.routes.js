@@ -5,6 +5,7 @@ import { verifyJWT } from "../middlewares/auth.middleware.js"
 import { getVideoById } from "../controllers/video.controller.js"
 import { updateVideo } from "../controllers/video.controller.js"
 import { deleteVideo } from "../controllers/video.controller.js";
+import { togglePublishStatus } from "../controllers/video.controller.js";
 
 const router = Router()
 
@@ -42,6 +43,11 @@ router.route("/:videoId").put(
 router.route("/:videoId").delete(
     verifyJWT,
     deleteVideo
+)
+
+router.route("/:videoId").patch(
+    verifyJWT,
+    togglePublishStatus
 )
 
 export default router

@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { ApiError } from "../utils/apiError.js"
 import { z } from "zod"
@@ -35,7 +36,18 @@ export const uploadVideoOnChannel = asyncHandler(async (req, res) => {
             throw new ApiError(400, "Video is needed");
         }
 
-        const video = await uploadVideoOnCloudinary(videoLocalPath)
+        let thumbnailLocalPath;
+        if (req.files && Array.isArray(req.files.thumbnail) && req.files.thumbnail.length > 0) {
+            thumbnailLocalPath = req.files.thumbnail[0].path
+        }
+
+        if (!thumbnailLocalPath) {
+            throw new ApiError(400, "Thumbnail is needed")
+        }
+
+        const thumbnail = await uploadOnCloudinary(thumbnailLocalPath)
+
+        const video = await uploadVideoOnCloudinary(videoLocalPath)     // Placed here as another check will be performed before video is uploaded
 
         if (!video) {
             throw new ApiError(500, "Failed to upload video to cloudinary")
@@ -49,17 +61,6 @@ export const uploadVideoOnChannel = asyncHandler(async (req, res) => {
         }
 
         // console.log("Video duration is " + duration.minutes + " minutes and " + duration.seconds + " seconds." )         Just for checking
-
-        let thumbnailLocalPath;
-        if (req.files && Array.isArray(req.files.thumbnail) && req.files.thumbnail.length > 0) {
-            thumbnailLocalPath = req.files.thumbnail[0].path
-        }
-
-        if (!thumbnailLocalPath) {
-            throw new ApiError(400, "Thumbnail is needed")
-        }
-
-        const thumbnail = await uploadOnCloudinary(thumbnailLocalPath)
 
 
         const createdVideo = await Video.create({
@@ -225,5 +226,44 @@ export const deleteVideo = asyncHandler(async (req, res) => {
     .status(200)
     .json(
         new ApiResponse(200, { videoId }, "Video Deleted Successfully")
+    )
+})
+
+export const togglePublishStatus = asyncHandler(async (req, res) => {
+    const { videoId } = req.params
+
+    if(!videoId || !mongoose.Types.ObjectId.isValid(videoId)) {
+        throw new ApiError(400, "A valid video ID is required");        // This is added because someone can give 1234 etc also as a video Id
+    }
+
+    const video = await Video.findById(videoId)
+
+    if(!video) {
+        throw new ApiError(404, "Video does not exist")
+    }
+
+    const isPublished = Toggle.isPublished
+
+    const toggledIsPublished = !isPublished
+
+    // console.log(isPublished)
+    // console.log(toggledIsPublished)
+
+    const finalUpdatedToggleStatus = await Video.findByIdAndUpdate(
+        videoId,
+        {
+            $set: {
+                isPublished: toggledIsPublished
+            }
+        },
+        {new: true}
+    )
+    // ).then((result) => console.log(result))
+    // .catch((error) => console.error("Error: ",error))
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(200, finalUpdatedToggleStatus, "Publish Status changed")
     )
 })
